@@ -21,6 +21,9 @@ export default function DashboardPage() {
   const [lastUpdate, setLastUpdate] = useState<string>('');
 
   useEffect(() => {
+    // Initial fetch
+    handleRefresh();
+
     // Create EventSource for Server-Sent Events
     const eventSource = new EventSource('/api/stream');
 
@@ -30,15 +33,24 @@ export default function DashboardPage() {
     };
 
     eventSource.onmessage = (event) => {
-      const newData = JSON.parse(event.data);
-      setData(newData);
-      setLastUpdate(new Date().toLocaleTimeString());
+      try {
+        const newData = JSON.parse(event.data);
+        setData(newData);
+        setLastUpdate(new Date().toLocaleTimeString());
+      } catch (error) {
+        console.error('Error parsing SSE data:', error);
+      }
     };
 
-    eventSource.onerror = () => {
+    eventSource.onerror = (error) => {
+      console.error('SSE Error:', error);
       setIsConnected(false);
-      console.error('SSE Error');
       eventSource.close();
+      
+      // Try to reconnect after 5 seconds
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
     };
 
     // Cleanup on unmount
